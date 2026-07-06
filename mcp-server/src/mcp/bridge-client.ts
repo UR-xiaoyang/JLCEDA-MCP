@@ -91,7 +91,8 @@ export class EdaBridgeServer {
       try {
         this.wss = new WebSocketServer({
           port: this.port,
-          // 不限制路径，在连接时根据路径判断客户端类型
+          // 不限制路径，接受所有连接
+          noServer: false,
         });
 
         this.wss.on('listening', () => {
@@ -103,6 +104,8 @@ export class EdaBridgeServer {
         this.wss.on('connection', (ws: WebSocket, req) => {
           // 根据路径区分 EDA 客户端和 MCP 内部客户端
           const pathname = req.url || '/bridge/ws';
+          process.stderr.write(`[Main Server] New connection from path: ${pathname}\n`);
+
           if (pathname.includes('/mcp-internal')) {
             this.handleMcpClientConnection(ws);
           } else {
