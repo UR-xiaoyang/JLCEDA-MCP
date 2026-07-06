@@ -28,6 +28,7 @@ JLCEDA EDA API
 
 - ✅ **反转架构**：EDA插件作为客户端连接到MCP服务器
 - ✅ **无需IDE插件**：MCP服务器独立运行，支持所有MCP客户端
+- ✅ **多客户端支持**：VSCode、Claude Code、OpenCode 等可同时连接使用
 - ✅ **智能检测**：仅在原理图/PCB页面自动连接
 - ✅ **自动重连**：连接断开自动恢复
 
@@ -258,6 +259,124 @@ npm run build
 2. 选择合适型号
 3. 使用网格布局自动计算位置
 4. 批量放置
+
+---
+
+## 🌐 多客户端支持
+
+### 概述
+
+MCP Server 支持多个编程软件（VSCode、Claude Code、OpenCode 等）**同时连接使用**，无需手动切换或独占连接。
+
+**重要：无需单独启动服务器！** 保持原有客户端配置即可，系统自动处理。
+
+### 工作原理
+
+- **第一个启动的客户端**：自动启动服务器并成为主服务器（监听端口 8765）
+- **后续启动的客户端**：自动检测端口占用，切换为客户端模式连接到主服务器
+- **所有请求**：通过主服务器统一转发到 EDA 插件
+
+### 使用场景
+
+#### 场景 1：VSCode + Claude Desktop 同时使用
+
+```bash
+# 1. 打开 VSCode → MCP Server 自动启动（主服务器模式）
+# 2. 打开 Claude Desktop → MCP Server 自动启动（客户端模式）
+# 3. 两个工具可以同时调用 EDA 功能，不会冲突
+```
+
+**无需任何配置更改！**
+
+#### 场景 2：多个开发环境协作
+
+```
+开发环境: VSCode (主服务器)
+  ├─ 测试环境: Claude Code (客户端)
+  └─ CI/CD: OpenCode (客户端)
+```
+
+### 启动日志示例
+
+**第一个实例（主服务器）：**
+```
+JLCEDA MCP Server v2.0.0
+Starting WebSocket server on port 8765...
+[Main Server] WebSocket server listening on ws://127.0.0.1:8765
+Started as MAIN server
+MCP Server started successfully
+```
+
+**第二个实例（客户端模式）：**
+```
+JLCEDA MCP Server v2.0.0
+Starting WebSocket server on port 8765...
+[Client Mode] Connected to main server at ws://127.0.0.1:8765/mcp-internal
+Started as CLIENT (connected to main server)
+MCP Server started successfully
+```
+
+### 配置说明
+
+所有客户端使用相同的配置即可，无需特殊设置。系统会自动检测并选择正确的运行模式。
+
+**详细文档**：查看 [MULTI_CLIENT_SUPPORT.md](./MULTI_CLIENT_SUPPORT.md) 了解完整的技术细节和故障排查。
+
+---
+
+## 🔌 保持服务器在线
+
+### 问题
+
+默认情况下，MCP 服务器由客户端工具（VSCode/Claude Desktop）启动，当工具关闭时服务器也会停止。
+
+### 解决方案
+
+#### 方法 1：使用 PM2（推荐）
+
+```bash
+# 安装 PM2
+npm install -g pm2
+
+# 启动服务器
+pm2 start ecosystem.config.cjs
+
+# 设置开机启动
+pm2 save
+pm2 startup
+
+# 查看状态
+pm2 status
+pm2 logs jlceda-mcp-server
+```
+
+#### 方法 2：双击启动脚本
+
+**Windows 用户：**
+- 前台运行：双击 `start-server.bat`
+- 后台运行：双击 `start-server-background.vbs`
+
+#### 方法 3：直接运行
+
+```bash
+node dist/index.js
+```
+
+### 检查服务器状态
+
+```bash
+node check-server.mjs
+```
+
+### 工作原理
+
+使用 PM2 或脚本独立运行服务器后：
+1. 独立服务器成为**主服务器**
+2. 客户端工具启动时检测到端口占用，自动切换为**客户端模式**
+3. 所有客户端通过主服务器工作
+4. 服务器保持在线，随时可用
+
+**详细指南**：查看 [KEEP_ONLINE_GUIDE.md](./KEEP_ONLINE_GUIDE.md) 和 [QUICK_START_ONLINE.md](./QUICK_START_ONLINE.md)
 
 ---
 

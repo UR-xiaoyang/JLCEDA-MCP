@@ -32,30 +32,35 @@ async function main() {
 
   // 初始化WebSocket服务器
   const bridgeServer = new EdaBridgeServer(BRIDGE_PORT);
-  
+
   try {
     await bridgeServer.start();
+    const mode = bridgeServer.getMode();
+    if (mode === 'main') {
+      process.stderr.write(`Started as MAIN server\n`);
+    } else if (mode === 'client') {
+      process.stderr.write(`Started as CLIENT (connected to main server)\n`);
+    }
   } catch (error) {
-    process.stderr.write(`Failed to start WebSocket server: ${error instanceof Error ? error.message : String(error)}\n`);
-    process.stderr.write(`Please ensure port ${BRIDGE_PORT} is not in use.\n`);
+    process.stderr.write(`Failed to start: ${error instanceof Error ? error.message : String(error)}\n`);
     process.exit(1);
   }
 
   // 初始化工具分发器
   const toolDispatcher = new ToolDispatcher(bridgeServer);
-  
+
   // 初始化RPC处理器
   const rpcHandler = new RpcHandler(toolDispatcher, SERVER_VERSION);
-  
+
   // 创建stdio传输层
   const transport = createStdioTransport(async (line: string) => {
     try {
       // 解析JSON-RPC请求
       const request = rpcHandler.parseRequestBody(line);
-      
+
       // 处理请求
       const response = await rpcHandler.handleRequest(request);
-      
+
       // 如果有响应，写回stdout
       if (response) {
         transport.write(response);
@@ -73,10 +78,10 @@ async function main() {
       transport.write(errorResponse);
     }
   });
-  
+
   // 启动传输层
   transport.start();
-  
+
   // 输出启动日志到stderr（不影响stdio通信）
   process.stderr.write(`MCP Server started successfully\n`);
   process.stderr.write(`Listening on stdio for JSON-RPC requests\n`);
